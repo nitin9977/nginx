@@ -1,0 +1,50 @@
+{
+  "name": "nginx-pr-review-hook",
+  "description": "Automatically trigger PR review on github events",
+  "hooks": [
+    {
+      "event": "pull_request",
+      "triggers": ["opened", "synchronize"],
+      "action": "invoke_agent",
+      "agent": "pr-reviewer",
+      "parameters": {
+        "mode": "focused",
+        "context": "pr_context",
+        "include_diff": true,
+        "include_files": true
+      },
+      "output": {
+        "format": "github_comment",
+        "create_if_new": true,
+        "update_if_exists": true,
+        "comment_header": "## 🔍 Automated PR Review (@pr-reviewer)"
+      },
+      "conditions": {
+        "paths": ["src/**", "conf/**", "auto/**"],
+        "exclude_paths": ["docs/**", "contrib/**"],
+        "min_changes": 1
+      }
+    },
+    {
+      "event": "issue_comment",
+      "triggers": ["created"],
+      "action": "invoke_agent",
+      "agent": "pr-reviewer",
+      "parameters": {
+        "mode": "dynamic",
+        "parse_command": true
+      },
+      "conditions": {
+        "comment_matches": "/review (strict|focused|quick)"
+      }
+    }
+  ],
+  "configuration": {
+    "default_mode": "focused",
+    "allowed_modes": ["strict", "focused", "quick"],
+    "suppress_style_issues": true,
+    "require_approval_comment": false,
+    "enable_thread_comments": true,
+    "skip_if_draft": false
+  }
+}
