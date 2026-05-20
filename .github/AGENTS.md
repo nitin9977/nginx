@@ -4,14 +4,19 @@ This directory contains specialized agents configured for the nginx project.
 
 ## Available Agents
 
-### `@principal-engineer` – Architecture & Systems Design Lead
+### `@principal-engineer` – Architecture, Debugging & Feature Design Lead
 
 **Use when:**
+- Debugging nginx issues (crashes, memory leaks, connection hangs, config reload failures, signal problems, event loop stalls, phase engine bugs, upstream failures)
+- Designing new nginx modules, features, phase handlers, or filters
 - Generating architecture documentation for team onboarding
 - Validating assumptions about performance, memory, or concurrency
 - Threat-modeling critical subsystems
 - Creating design specs or annotated code walkthroughs
-- Reviewing architecture proposals with adversarial scrutiny
+
+**Knowledge base** (loaded automatically — no codebase traversal needed):
+- `nginx-internals` skill with 5 reference files: module map, struct reference, lifecycle flows, debug playbook, design patterns
+- 14 architecture docs in `.github/docs/` covering all `src/` modules
 
 **Specialization:**
 - C/C++ memory management and buffer safety
@@ -19,17 +24,21 @@ This directory contains specialized agents configured for the nginx project.
 - Concurrency models (workers, event loops, locking)
 - Performance assumptions and bottleneck analysis
 - System-level threat modeling
+- Root cause analysis with structured debug workflows
 
 **Engagement model:**
-- Challenges assumptions rather than accepting them at face value
-- Produces multi-format output: architecture diagrams, code walkthroughs, threat models, memory/performance analysis
+- For debugging: classifies symptom → consults debug playbook → traces execution path → reads only targeted source → provides root cause + fix
+- For feature design: identifies pattern → loads design templates → designs with invariants → produces implementation skeleton
+- For architecture: challenges assumptions, identifies risks, suggests hardening
 - References specific line numbers and code locations
 - Rates risks (critical/high/medium/low) and suggests validation tests
-- Honest about unknowns; never speculates
 
 **Example usage:**
 ```
-@principal-engineer: Create architecture ramp-up docs for a new engineer joining the core networking team. Include memory models, concurrency patterns, and a threat model for the event loop.
+@principal-engineer: worker segfaults after config reload — trace the issue
+@principal-engineer: design a stream module that rate-limits by source IP
+@principal-engineer: Create architecture ramp-up docs for the event loop
+@principal-engineer: Threat model: connection pooling under slowloris attack
 ```
 
 ---
