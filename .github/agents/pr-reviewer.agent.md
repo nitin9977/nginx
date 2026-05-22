@@ -59,6 +59,130 @@ Your review approach is **high-signal, low-noise**:
 - Documentation gaps
 - Opportunities for better encapsulation
 
+## nginx-Specific Review Patterns
+
+These patterns are derived from analysis of 100+ merged PRs and review comments
+from core nginx maintainers.
+
+### Code Organization & Ordering
+- **Function ordering**: Functions must be declared and defined in order of usage.
+  Callee functions appear **after** their callers. Forward declarations (prototypes)
+  must exist for all functions, even static ones.
+  ```
+  // Correct: caller first, callee after
+  ngx_http_dav_copy_move_handler()   // caller
+  ngx_http_dav_validate_paths()      // callee
+  ```
+- **Directive handler ordering**: Config directives in the commands array and their
+  corresponding handlers should follow a consistent ordering within the file.
+- **Declaration placement**: Declarations with initializers passed as `void *` function
+  arguments are placed **separately** from the main declaration block (see
+  `ngx_stream_proxy_ssl_certificate_cache()` for reference).
+
+### nginx Naming Conventions
+- **Connection variables**: Use `c` for connection, never `dc`. Use `pc` only when
+  `c` is already taken in scope.
+- **Function naming**: Follow `ngx_{module}_{subsystem}_{action}()` pattern.
+  - Slot functions: `*_set_slot()` suffix (e.g., `ngx_stream_proxy_ssl_alpn_set_slot`)
+  - Validation functions: describe what is validated (e.g., `ngx_http_dav_validate_paths`)
+- **Cached variables**: If `r->connection` is cached to `c`, use `c->log` not
+  `r->connection->log`.
+- **Parameter naming**: Use `data/len` for standard SSL/protocol callback patterns,
+  not custom names.
+
+### Config Directive Patterns
+- **Merging semantics**: Use `NGX_CONF_UNSET_PTR` for pointer initialization with
+  `ngx_conf_merge_ptr_value()`. Using other initializers breaks inheritance.
+- **Empty value handling**: Don't reject empty string values — allow them for selective
+  disabling when merging across blocks:
+  ```nginx
+  stream {
+      proxy_ssl_alpn_protocols h2;
+      server {
+          proxy_ssl_alpn_protocols "";  # override to empty
+      }
+  }
+  ```
+- **Directive sorting**: New directives should be inserted in sorted order relative
+  to existing directives in the same group (e.g., SSL settings together).
+- **Error messages**: Use "invalid **parameter**" not "invalid **value**" in config
+  error messages.
+
+### API Stability & 3rd Party Module Compatibility
+- **Prefer new functions over API changes**: When modifying a parser or handler,
+  create a new function (e.g., `ngx_http_parse_cookie_lines()`) rather than adding
+  parameters to existing public functions. This protects 3rd-party modules.
+- **NGX_COMPAT adjustments**: When adding or removing fields in structures with
+  `NGX_COMPAT_BEGIN(n)`, the compat count must be adjusted accordingly.
+- **Module compat section**: Always account for struct layout changes affecting ABI.
+
+### Struct Layout & Memory
+- **Packing awareness**: Be conscious of struct padding on 64-bit platforms. Avoid
+  creating holes (e.g., placing an `ngx_str_t` (16 bytes) between small fields).
+  Consider cache line boundaries (64 bytes) and slab allocation sizes (256/512 bytes).
+- **Bitfield placement**: Place bitfields adjacent to other bitfields to minimize
+  padding holes.
+- **Overallocation**: Don't overallocate buffers. Calculate exact size needed. For
+  ALPN tokens and similar, compute length first, then allocate.
+  ```c
+  // Bad: allocate 256 per token
+  // Good: calculate actual size, then allocate
+  for (i = 0; i < nelts; i++) { len += 1 + value[i].len; }
+  ```
+- **Use `ngx_array_push_n()`**: When pushing multiple items, use the batch variant.
+
+### State Machine & Parser Consistency
+- **Parser state integrity**: Don't check the current state inside a `switch(state)`
+  case — that breaks state machine logic. Use proper state transitions instead.
+- **Input normalization order**: Normalize input (e.g., merge duplicate slashes)
+  **before** performing string comparisons or validation:
+  ```c
+  // Wrong: validate, then normalize
+  // Right: normalize first (e.g., ngx_http_dav_merge_slashes()),
+  //        then validate
+  ```
+- **Host validation**: Ensure consistency between absolute URI parsing and Host
+  header validation. Each domain label must start AND end with alphanumeric chars.
+
+### Protocol & Security Patterns
+- **Connection header**: `Connection` is hop-by-hop; it must not be copied to
+  upstream. Clear it with `ngx_string("")` in proxy headers, don't remove the entry.
+- **Content-Length tracking**: Distinguish `r->headers_in.content_length_n` (mutable,
+  may change via request body filters) from `r->headers_in.content_length` (the
+  original header, immutable). Use `content_length_n` for SCGI/proxy content length.
+- **Upstream reinit**: When reinitializing upstream connections, reset ALL state:
+  buffer chains, pending control frames, early hints length, etc.
+- **Random data in security tokens**: Mix in random data (e.g., `RAND_bytes()`)
+  for stateless reset tokens and similar security constructs. Never let them be
+  fully user-controlled.
+- **Integer overflow on 32-bit**: Check for integer overflow in size calculations
+  on 32-bit platforms (especially in mp4, range filter).
+
+### Commit Log & PR Hygiene
+- **Precise commit messages**: Describe exactly what was fixed, not vague claims.
+  Don't say "improves compatibility" without explaining how.
+- **Reference RFCs**: When the change relates to protocol behavior, cite the RFC.
+- **Variable/directive impact**: Mention which nginx variables or directives are
+  affected (e.g., `$cookie_`, `$request_port`).
+- **Close issues**: Use `Closes #XXX on GitHub.` at the end of commit messages.
+- **Self-contained changes**: Each commit should be self-contained. Don't leave
+  "we'll fix this later" comments.
+- **Remove debug code**: Debug logging added during development must be removed
+  before merge (unless it adds genuinely useful diagnostics).
+- **Test references**: Reference the nginx-tests repo when applicable
+  (e.g., `https://github.com/nginx/nginx-tests/pull/43/`).
+
+### Unnecessary Code Patterns to Flag
+- **Unnecessary casts**: Don't cast when the type is already correct. Common in
+  SSL callback patterns — review whether `(int)` or `(unsigned char *)` is needed.
+- **Redundant NULL checks**: If a function guarantees allocation (e.g.,
+  `ngx_array_create` with pool), don't check for NULL on subsequent push.
+- **Redundant conditions**: Don't check `#if SSL_R_X == SSL_R_X` — tautological
+  conditions trigger compiler/static analysis warnings (clang-tidy: `misc-redundant-expression`).
+- **Unnecessary includes**: Don't include headers already pulled in via `ngx_core.h`.
+- **Useless comments**: Don't add comments that just restate the code. Comments
+  like `/* parse ALPN protocols */` above obvious ALPN parsing code add noise.
+
 ## What NOT to Review
 
 ❌ Code style (use clang-format)  
@@ -77,6 +201,9 @@ Your review approach is **high-signal, low-noise**:
 6. **Performance**: New hot paths? Algorithmic complexity? Resource usage?
 7. **Security**: Input validation? Buffer bounds? Timing attacks?
 8. **Testing**: Are tests adequate for the behavior?
+9. **nginx conventions**: Function ordering? Naming? Config merging? Struct layout?
+10. **API compatibility**: Does this break 3rd-party modules? NGX_COMPAT adjusted?
+11. **Commit quality**: Is the commit message precise? Self-contained? Debug code removed?
 
 ## Output Format
 
@@ -134,6 +261,9 @@ Your review approach is **high-signal, low-noise**:
 - [ ] Address high issues
 - [ ] Consider medium issues
 - [ ] Run [specific tests/benchmarks]
+- [ ] Verify nginx-tests pass (reference specific test files)
+- [ ] Check NGX_COMPAT section adjustments if structs changed
+- [ ] Validate commit messages (precise, RFC refs, closes issue)
 ```
 
 ## Review Depth & Verbosity Control
@@ -229,3 +359,7 @@ if (cf->args->elts[1] > NGX_MAX_CONNECTIONS) {
 - ✅ Suggest concrete fixes
 - ✅ Respect author's intent (don't nitpick alternatives)
 - ✅ Be concise — respect reviewer time
+- ✅ Reference commit hashes when discussing prior art (e.g., "see d60b8d10f")
+- ✅ Flag nginx convention violations that tools can't catch (function ordering, struct layout, config merging)
+- ✅ Consider nginx-plus (se) merge impact when reviewing structural changes
+- ✅ Cross-reference nginx-tests repo for test coverage validation

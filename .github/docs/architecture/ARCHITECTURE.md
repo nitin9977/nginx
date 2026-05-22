@@ -3,6 +3,7 @@
 **Audience**: Engineers ramping up on nginx. Assumes C experience, some UNIX systems knowledge.
 **Last Updated**: 2024
 **Status**: Work in Progress (Principal Engineer Review)
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

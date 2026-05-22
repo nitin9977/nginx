@@ -2,7 +2,8 @@
 
 **Audience**: Engineers onboarding to `src/misc` internals  
 **Scope**: Architecture, integration, and walkthrough for misc module behavior  
-**Date**: 2026-05-19
+**Date**: 2026-05-19  
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

@@ -1,5 +1,7 @@
 # Design Patterns — nginx Module & Feature Development
 
+> **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Patterns for implementing new modules, phase handlers, config directives, and features within nginx conventions.
 
 ---

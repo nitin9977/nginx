@@ -3,6 +3,7 @@
 **Audience**: Developers debugging event handling, performance engineers instrumenting nginx.
 **Last Updated**: 2024
 **Goal**: Trace request from socket → event loop → handler → response, with exact line numbers.
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

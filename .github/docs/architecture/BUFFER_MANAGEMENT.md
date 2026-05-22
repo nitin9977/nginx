@@ -3,6 +3,7 @@
 **Audience**: Security-focused engineers, buffer overflow hunters, performance tuners.
 **Last Updated**: 2024
 **Threats Covered**: Buffer overflows, malformed input, parser edge cases, resource exhaustion.
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

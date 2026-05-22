@@ -1,5 +1,7 @@
 # Struct Reference — nginx Core Data Structures
 
+> **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Field-level descriptions of critical structs so you don't need to read headers on every prompt.
 
 ## ngx_cycle_t (`src/core/ngx_cycle.h`)

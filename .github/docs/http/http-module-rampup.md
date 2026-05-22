@@ -1,7 +1,8 @@
 # nginx `src/http` Module — Engineering Ramp-Up Guide
 
 > Principal-engineer depth. Every claim is traceable to a source file and line.  
-> Target audience: engineers new to the nginx HTTP codebase.
+> Target audience: engineers new to the nginx HTTP codebase.  
+> **Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

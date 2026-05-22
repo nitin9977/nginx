@@ -6,6 +6,8 @@ argument-hint: 'Describe the issue to debug or feature to design'
 
 # nginx Internals Knowledge Base
 
+> **Source paths**: All `src/` references in this file and its references are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Distilled from 14 architecture documents covering all `src/` modules. Use this skill to avoid full codebase read-throughs on every prompt.
 
 ## When to Use

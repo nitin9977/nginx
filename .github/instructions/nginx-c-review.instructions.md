@@ -126,6 +126,55 @@ For each C file change, verify:
 
 ---
 
+## nginx Project Conventions (from Maintainer Reviews)
+
+These rules are derived from actual review feedback by core nginx maintainers on 100+ merged PRs. They catch issues that generic
+C linters miss.
+
+### Function & Declaration Ordering
+- Functions must be defined in **call order**: callers first, callees after
+- All functions (even `static`) must have forward declarations (prototypes)
+- Related functions group together (e.g., all `ngx_http_dav_copy_move_*` adjacent)
+
+### nginx-Specific Formatting (NOT linter territory)
+These are nginx project conventions that linters don't enforce:
+- **Double empty line** before function definitions (between function groups)
+- **Multi-line `if`**: opening `{` on its **own line** for multi-line conditions
+- **Declaration blocks**: declarations with `void *` argument initializers are
+  placed **separately** from the main variable declarations
+- **Line wrapping**: wrap long function signatures; don't exceed ~80 chars per line
+- No trailing empty lines before function closing `}`
+
+### Config Directive Conventions
+- Use `NGX_CONF_UNSET_PTR` for pointer-type config values (not NULL)
+- Allow empty string values for selective override in nested blocks
+- Error messages: "invalid **parameter**" (not "invalid value" or "invalid argument")
+- Sort directives within their group (SSL settings together, etc.)
+
+### Variable Naming in nginx
+| Pattern | Convention |
+|---------|-----------|
+| Connection | `c` (never `dc`; `pc` only when `c` is taken) |
+| Session | `s` |
+| Request | `r` |
+| Upstream | `u` |
+| Config | `cf` |
+| Cached `r->connection` | Use `c->log` not `r->connection->log` |
+| SSL data/length | `data` / `len` |
+
+### Struct & ABI Conventions
+- Adjust `NGX_COMPAT_BEGIN(n)` count when adding/removing fields
+- Consider struct packing: avoid padding holes between small and large fields
+- Place bitfields adjacent to other bitfields
+- Be aware of cache line (64-byte) and slab (256/512-byte) boundaries
+
+### API Design
+- Don't change public function signatures — create new wrapper functions instead
+- Reference existing patterns: check `egrep -r 'pattern' src` for consistency
+- Keep changes self-contained; don't add "fix later" TODOs
+
+---
+
 ## Red Flags 🚩
 
 Stop and ask for clarification if you see:
@@ -138,6 +187,13 @@ Stop and ask for clarification if you see:
 - **Global mutable state without synchronization** — Race condition risk
 - **Fixed-size buffers with unbounded input** — Overflow risk
 - **Recursive syscalls** — May not be async-signal-safe
+- **User-controlled security tokens** — Mix in RAND_bytes() for stateless reset tokens, session IDs
+- **Input normalization after validation** — Normalize (merge slashes, strip dots) BEFORE validating
+- **Integer overflow in size calculations on 32-bit** — Especially in mp4, range filter, buffer size math
+- **Upstream state not fully reset on reinit** — Must reset buffer chains, control frames, length counters
+- **Content-Length header vs content_length_n mismatch** — The header is immutable; the `_n` value may change via body filters
+- **Tautological `#ifdef` conditions** — Triggers clang-tidy `misc-redundant-expression` warnings
+- **Overallocation in hot paths** — Calculate exact sizes, don't pad with arbitrary constants
 
 ---
 

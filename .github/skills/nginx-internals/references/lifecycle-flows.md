@@ -1,5 +1,7 @@
 # Lifecycle Flows — nginx Execution Paths
 
+> **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Step-by-step execution paths for key operations. Use to trace behavior without reading source.
 
 ## 1. Process Startup (main → workers)

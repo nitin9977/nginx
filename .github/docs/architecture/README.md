@@ -3,6 +3,7 @@
 **Purpose**: Comprehensive onboarding for engineers ramping up on the NGINX codebase.  
 **Created**: 2024  
 **Status**: ✓ Complete (Principal Engineer Review)  
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 **Audience**: Backend engineers, systems engineers, performance specialists.
 
 ---

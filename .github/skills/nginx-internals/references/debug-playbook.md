@@ -1,5 +1,7 @@
 # Debug Playbook — nginx Issue Diagnosis
 
+> **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Organized by symptom. For each: likely root causes, which files to check, and verification steps.
 
 ---

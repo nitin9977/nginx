@@ -3,6 +3,7 @@
 **Audience**: Performance engineers, SREs, capacity planners.
 **Last Updated**: 2024
 **Focus**: Hot paths, cache behavior, lock contention, tuning parameters.
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

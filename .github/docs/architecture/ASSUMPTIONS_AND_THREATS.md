@@ -3,6 +3,7 @@
 **Audience**: Architects, security engineers, deployment specialists.
 **Last Updated**: 2024
 **Purpose**: Enumerate non-obvious assumptions and associated threat scenarios.
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

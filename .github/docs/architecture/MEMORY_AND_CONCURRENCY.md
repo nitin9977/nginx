@@ -3,6 +3,7 @@
 **Audience**: Engineers designing high-concurrency systems, performance optimizers.
 **Last Updated**: 2024
 **Focus**: Worker isolation, shared state, allocation patterns, cache coherency.
+**Source paths**: All `src/` references are relative to the **nginx repository root** (`<repo>/src/`), not relative to `.github/`.
 
 ---
 

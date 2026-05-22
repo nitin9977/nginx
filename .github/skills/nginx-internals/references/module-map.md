@@ -1,5 +1,7 @@
 # Module Map — nginx Source Tree
 
+> **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+
 Quick lookup: which module owns what behavior, key files per module, and cross-module dependencies.
 
 ## src/core — Process Runtime Foundation
