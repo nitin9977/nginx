@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [".github/AGENTS.md"],
+  "skills": {
+    "paths": [".opencode/skills", ".github/skills"]
+  },
+  "permission": {
+    "external_directory": {
+      "*": "ask"
+    },
+    "bash": {
+      "*": "ask"
+    },
+    "read": {
+      "*": "allow",
+      "*.env": "ask",
+      "*.env.*": "ask"
+    },
+    "edit": {
+      "*": "allow"
+    },
+    "glob": {
+      "*": "allow"
+    },
+    "grep": {
+      "*": "allow"
+    },
+    "webfetch": "ask",
+    "websearch": "ask",
+    "repo_clone": "ask",
+    "task": {
+      "*": "allow"
+    }
+  }
+}
