@@ -1,6 +1,10 @@
 # Design Patterns — nginx Module & Feature Development
 
 > **Source paths**: All `src/` paths below are relative to the **nginx repository root** (i.e. `<repo>/src/`), not relative to `.github/`.
+>
+> **Coding Style**: All code examples in this file and all code produced using these patterns
+> **must** conform to the [nginx Coding Style Guide](../../../docs/coding-style/NGINX_CODING_STYLE.md),
+> which is derived from the official [nginx development guide](https://nginx.org/en/docs/dev/development_guide.html#code_style).
 
 Patterns for implementing new modules, phase handlers, config directives, and features within nginx conventions.
 
@@ -11,25 +15,27 @@ Patterns for implementing new modules, phase handlers, config directives, and fe
 Every nginx module follows this skeleton:
 
 ```c
-// 1. Config struct
+/* 1. Config struct */
 typedef struct {
     ngx_flag_t  enable;
     ngx_str_t   setting;
 } ngx_http_mymodule_conf_t;
 
-// 2. Directive array
-static ngx_command_t ngx_http_mymodule_commands[] = {
+/* 2. Directive array */
+static ngx_command_t  ngx_http_mymodule_commands[] = {
+
     { ngx_string("my_directive"),
       NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_mymodule_conf_t, enable),
       NULL },
-    ngx_null_command
+
+      ngx_null_command
 };
 
-// 3. Module context (config lifecycle)
-static ngx_http_module_t ngx_http_mymodule_ctx = {
+/* 3. Module context (config lifecycle) */
+static ngx_http_module_t  ngx_http_mymodule_ctx = {
     NULL,                               /* preconfiguration */
     ngx_http_mymodule_postconfiguration,/* postconfiguration */
     NULL,                               /* create main conf */
@@ -40,8 +46,8 @@ static ngx_http_module_t ngx_http_mymodule_ctx = {
     ngx_http_mymodule_merge_loc_conf    /* merge loc conf */
 };
 
-// 4. Module definition
-ngx_module_t ngx_http_mymodule_module = {
+/* 4. Module definition */
+ngx_module_t  ngx_http_mymodule_module = {
     NGX_MODULE_V1,
     &ngx_http_mymodule_ctx,
     ngx_http_mymodule_commands,
@@ -64,15 +70,18 @@ Register in `postconfiguration`:
 static ngx_int_t
 ngx_http_mymodule_postconfiguration(ngx_conf_t *cf)
 {
-    ngx_http_core_main_conf_t *cmcf;
-    ngx_http_handler_pt       *h;
+    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_handler_pt        *h;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
-    if (h == NULL) return NGX_ERROR;
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
 
     *h = ngx_http_mymodule_handler;
+
     return NGX_OK;
 }
 ```
@@ -91,15 +100,19 @@ ngx_http_mymodule_postconfiguration(ngx_conf_t *cf)
 static ngx_int_t
 ngx_stream_mymodule_postconfiguration(ngx_conf_t *cf)
 {
-    ngx_stream_core_main_conf_t *cmcf;
-    ngx_stream_handler_pt       *h;
+    ngx_stream_core_main_conf_t  *cmcf;
+    ngx_stream_handler_pt        *h;
 
-    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+    cmcf = ngx_stream_conf_get_module_main_conf(cf,
+                                                ngx_stream_core_module);
 
     h = ngx_array_push(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers);
-    if (h == NULL) return NGX_ERROR;
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
 
     *h = ngx_stream_mymodule_handler;
+
     return NGX_OK;
 }
 ```
@@ -118,12 +131,12 @@ static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_int_t
 ngx_http_mymodule_header_filter(ngx_http_request_t *r)
 {
-    // modify headers
+    /* modify headers */
     r->headers_out.content_type_len = sizeof("text/plain") - 1;
     return ngx_http_next_header_filter(r);
 }
 
-// In postconfiguration:
+/* In postconfiguration: */
 ngx_http_next_header_filter = ngx_http_top_header_filter;
 ngx_http_top_header_filter = ngx_http_mymodule_header_filter;
 ```
@@ -149,9 +162,9 @@ ngx_http_top_header_filter = ngx_http_mymodule_header_filter;
 static char *
 ngx_http_mymodule_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t *value = cf->args->elts;
-    // value[0] = directive name, value[1..n] = arguments
-    // return NGX_CONF_OK or NGX_CONF_ERROR
+    ngx_str_t  *value = cf->args->elts;
+    /* value[0] = directive name, value[1..n] = arguments */
+    /* return NGX_CONF_OK or NGX_CONF_ERROR */
 }
 ```
 
@@ -172,17 +185,18 @@ ngx_http_mymodule_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 ## 7. Timer Pattern
 
 ```c
-// Arm timer
+/* arm timer */
 ngx_add_timer(c->read, timeout_ms);
 
-// In handler, check timeout
+/* in handler, check timeout */
 if (rev->timedout) {
-    ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-    // finalize/close
+    ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                  "client timed out");
+    /* finalize/close */
     return;
 }
 
-// Clear timer on success
+/* clear timer on success */
 if (c->read->timer_set) {
     ngx_del_timer(c->read);
 }
@@ -193,9 +207,12 @@ if (c->read->timer_set) {
 ## 8. Upstream Module Pattern
 
 ```c
-// In content handler:
-ngx_http_upstream_t *u;
-if (ngx_http_upstream_create(r) != NGX_OK) return NGX_HTTP_INTERNAL_SERVER_ERROR;
+/* in content handler: */
+ngx_http_upstream_t  *u;
+
+if (ngx_http_upstream_create(r) != NGX_OK) {
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
 
 u = r->upstream;
 u->conf = &mycf->upstream;
@@ -211,13 +228,15 @@ return NGX_DONE;
 ## 9. Variable Registration Pattern
 
 ```c
-static ngx_http_variable_t ngx_http_mymodule_vars[] = {
+static ngx_http_variable_t  ngx_http_mymodule_vars[] = {
+
     { ngx_string("my_var"), NULL,
       ngx_http_mymodule_variable, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
-    ngx_http_null_variable
+
+      ngx_http_null_variable
 };
 
-// In preconfiguration:
+/* in preconfiguration: */
 for (v = ngx_http_mymodule_vars; v->name.len; v++) {
     var = ngx_http_add_variable(cf, &v->name, v->flags);
     var->get_handler = v->get_handler;
@@ -241,3 +260,4 @@ When designing a new feature:
 - [ ] Filter or handler? (modify response vs generate response)
 - [ ] Variable exposure? (does it export `$variables`?)
 - [ ] Log phase integration? (custom access log fields?)
+- [ ] Coding style? (all code follows [nginx Coding Style Guide](../../../docs/coding-style/NGINX_CODING_STYLE.md))

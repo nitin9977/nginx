@@ -7,7 +7,6 @@ description: >
   mindset: challenges assumptions, traces memory flows, identifies race conditions.
   Use when: reviewing PRs before merge, validating architectural changes, assessing
   security/performance impact, or requesting deep technical review on critical paths.
-model: claude-sonnet-4-20250514
 invocation: "Manual (@pr-reviewer mention) or automatic (GitHub Actions hook)"
 ---
 
@@ -29,6 +28,31 @@ Your review approach is **high-signal, low-noise**:
 - **Reference code with precision** — specific line numbers, functions, call chains
 - **Explain impact** — why does this matter? What could go wrong?
 - **Suggest fixes** — concrete code improvements, not vague guidance
+
+## Knowledge Base
+
+**Always load the relevant reference BEFORE forming a verdict** — cite the authoritative rule instead of relying on memory:
+
+- [nginx Coding Style Guide](.github/docs/coding-style/NGINX_CODING_STYLE.md) — **mandatory** formatting, naming, and structural rules from the official nginx development guide; the authoritative source for the [nginx-Specific Review Patterns](#nginx-specific-review-patterns) checks below
+- [Module Map](.github/skills/nginx-internals/references/module-map.md) — identify which module owns the changed file and its established conventions
+- [Struct Reference](.github/skills/nginx-internals/references/struct-reference.md) — verify struct field changes against documented layout/lifetime semantics
+- [Design Patterns](.github/skills/nginx-internals/references/design-patterns.md) — confirm new modules/handlers/filters follow the established registration and lifecycle skeletons
+
+**HTTP protocol standards** (load when the diff touches request/response parsing, framing, caching, or `ngx_http_v2_*`/`ngx_http_v3_*` code):
+
+- [HTTP RFC Standards](.github/skills/http-rfc-standards/SKILL.md) — index of the current HTTP core suite and compatibility map
+- [RFC 9110 — Semantics](.github/skills/http-rfc-standards/references/rfc-9110-semantics.md) — methods, status codes, header fields, conditionals, ranges, auth
+- [RFC 9111 — Caching](.github/skills/http-rfc-standards/references/rfc-9111-caching.md) — freshness, validation, `Cache-Control`, `Vary` (cache-poisoning surface)
+- [RFC 9112 — HTTP/1.1](.github/skills/http-rfc-standards/references/rfc-9112-http11.md) — message framing, chunked transfer, **request smuggling (§11.2)**
+- [RFC 9113 — HTTP/2](.github/skills/http-rfc-standards/references/rfc-9113-http2.md) — frames, HPACK, streams, flow control, DoS vectors (Rapid Reset)
+- [RFC 9114 — HTTP/3](.github/skills/http-rfc-standards/references/rfc-9114-http3.md) — QUIC streams, QPACK, h3 frames, 0-RTT replay
+- [RFC 9931 — Optimistic Transitions](.github/skills/http-rfc-standards/references/rfc-9931.md) — `Upgrade`/`CONNECT` smuggling defenses (updates 9112)
+- [Compatibility Map](.github/skills/http-rfc-standards/references/compatibility.md) — RFC 7230–7235 (723x), 2616, 2068, 1945 section mapping (translate old CVE/issue citations)
+
+**nginx directive reference** (load when the diff adds, removes, or changes a config directive):
+
+- [Directive Index](.github/docs/directives/README.md) — full index with quick-reference configs for all modules
+- Module-specific pages under `.github/docs/directives/{core.md, http/*.md, stream/*.md, mail/*.md}` — verify the documented syntax, default value, and valid context match what the diff implements before flagging a behavior change
 
 ## Review Categories
 
@@ -61,8 +85,7 @@ Your review approach is **high-signal, low-noise**:
 
 ## nginx-Specific Review Patterns
 
-These patterns are derived from analysis of 100+ merged PRs and review comments
-from core nginx maintainers.
+Check every changed hunk against the **[nginx Coding Style Guide](.github/docs/coding-style/NGINX_CODING_STYLE.md)** plus these additional patterns, derived from analysis of 100+ merged PRs and review comments from core nginx maintainers. **Scope note**: cite the Coding Style Guide for structural/naming rules that clang-format cannot catch (type suffixes, function ordering, prototype requirements, directive/config conventions) — pure formatting it also documents (indentation, brace spacing) remains linter territory per [What NOT to Review](#what-not-to-review) below.
 
 ### Code Organization & Ordering
 - **Function ordering**: Functions must be declared and defined in order of usage.
@@ -91,6 +114,7 @@ from core nginx maintainers.
   not custom names.
 
 ### Config Directive Patterns
+- **Verify against the directive reference**: Before flagging a directive's default, context, or merge behavior as wrong, confirm the documented contract in the [nginx directive reference](.github/docs/directives/README.md) (e.g., `.github/docs/directives/http/core.md` for core HTTP directives).
 - **Merging semantics**: Use `NGX_CONF_UNSET_PTR` for pointer initialization with
   `ngx_conf_merge_ptr_value()`. Using other initializers breaks inheritance.
 - **Empty value handling**: Don't reject empty string values — allow them for selective
@@ -145,11 +169,16 @@ from core nginx maintainers.
   header validation. Each domain label must start AND end with alphanumeric chars.
 
 ### Protocol & Security Patterns
+For any claim about protocol correctness (framing, header semantics, caching), verify it against the relevant [HTTP RFC Standards](.github/skills/http-rfc-standards/SKILL.md) reference rather than intuition — cite the section number in the finding.
 - **Connection header**: `Connection` is hop-by-hop; it must not be copied to
   upstream. Clear it with `ngx_string("")` in proxy headers, don't remove the entry.
 - **Content-Length tracking**: Distinguish `r->headers_in.content_length_n` (mutable,
   may change via request body filters) from `r->headers_in.content_length` (the
   original header, immutable). Use `content_length_n` for SCGI/proxy content length.
+- **Request smuggling surface**: Any change touching `Content-Length`/`Transfer-Encoding`
+  parsing, chunked decoding, or h2/h3 framing must be checked against
+  [RFC 9112 §11.2](.github/skills/http-rfc-standards/references/rfc-9112-http11.md) and
+  [RFC 9931](.github/skills/http-rfc-standards/references/rfc-9931.md) (`Upgrade`/`CONNECT` desync).
 - **Upstream reinit**: When reinitializing upstream connections, reset ALL state:
   buffer chains, pending control frames, early hints length, etc.
 - **Random data in security tokens**: Mix in random data (e.g., `RAND_bytes()`)
@@ -204,6 +233,8 @@ from core nginx maintainers.
 9. **nginx conventions**: Function ordering? Naming? Config merging? Struct layout?
 10. **API compatibility**: Does this break 3rd-party modules? NGX_COMPAT adjusted?
 11. **Commit quality**: Is the commit message precise? Self-contained? Debug code removed?
+12. **Protocol compliance**: If the diff touches parsing/framing/caching, does behavior match the cited [HTTP RFC Standards](.github/skills/http-rfc-standards/SKILL.md) section?
+13. **Directive documentation match**: If the diff adds/changes a directive, does its default/context/syntax match the [directive reference](.github/docs/directives/README.md)?
 
 ## Output Format
 

@@ -20,12 +20,7 @@ The nginx repository has two specialized review agents working together:
 - Review runs in `focused` mode (critical + high severity issues only)
 - Results posted as a GitHub comment on the PR
 
-**What's reviewed:**
-- Changes in `src/`, `auto/`, `conf/` directories
-- Memory safety, concurrency, correctness, performance
-- Security vulnerabilities, buffer overflows, race conditions
-- Logic errors and edge cases
-- ⏭️ **Skipped:** docs, contrib, style/formatting (those are for linters)
+**What's reviewed:** Changes under `src/`, `auto/`, `conf/` (`.c`/`.h`) — see the review categories and checks in [pr-reviewer.agent.md](.github/agents/pr-reviewer.agent.md#review-categories). Skips docs, contrib, and style/formatting (linter territory).
 
 **How to control it:**
 
@@ -128,119 +123,19 @@ Before requesting review:
 
 ## 🚨 What Gets Flagged
 
-### 🔴 Critical Issues (Blocks merge)
-- Buffer overflows, use-after-free, memory leaks
-- Race conditions, deadlocks, memory barriers
-- Security vulnerabilities (injection, bypass, DoS)
-- Logic errors breaking core functionality
-- Incorrect syscall usage
-
-### 🟠 High Issues (Strongly recommend fixing)
-- Potential off-by-one errors
-- Lock ordering violations
-- Unvalidated user input
-- Performance regressions
-- Missing error handling on critical paths
-
-### 🟡 Medium Issues (Recommend addressing)
-- Incomplete bounds checking
-- Inefficient memory patterns
-- Non-obvious concurrency assumptions
-- Configuration limits that could cause issues
-
-### 🟢 Low Issues (FYI)
-- Suboptimal patterns that work
-- Simplification opportunities
-- Documentation gaps
-
-### ✅ NOT Flagged
-- Code style (use linters)
-- Naming conventions
-- Comment formatting
-- Pre-existing issues in unchanged code
-- Trivial refactors
+Severity definitions (critical/high/medium/low) and the full "what's flagged vs. skipped" breakdown live in [pr-reviewer.agent.md](.github/agents/pr-reviewer.agent.md#review-categories) — that file is the source of truth, kept in sync with the review output.
 
 ---
 
 ## 🔗 Integration with GitHub
 
-### Automatic Review Comment
-
-The `pr-review.json` hook configures GitHub Actions to:
-
-1. **Trigger on PR events**: Open, synchronize (new commits)
-2. **Analyze changes**: Parse diff, identify affected files
-3. **Run review**: In `focused` mode by default
-4. **Post comment**: GitHub comment on the PR with findings
-5. **Update on push**: Review comment updates when author pushes new commits
-6. **Parse commands**: `/review strict`, `/review quick`, `/review focused`
-
-### Configuration
-
-The hook is configured in `.github/hooks/pr-review.json`:
-
-```json
-{
-  "event": "pull_request",
-  "triggers": ["opened", "synchronize"],
-  "mode": "focused",
-  "paths": ["src/**", "conf/**", "auto/**"],
-  "exclude_paths": ["docs/**", "contrib/**"]
-}
-```
-
-**What this means:**
-- Reviews trigger on PR open and new commits
-- Only reviews changes in core directories
-- Skips documentation and contrib changes
-- Uses `focused` mode (critical + high severity)
+Trigger events, path filters, default mode, and the `/review` comment-command parsing are all defined in [.github/hooks/pr-review.json](.github/hooks/pr-review.json) — edit that file directly to change automation behavior rather than duplicating its settings here.
 
 ---
 
-## 📖 Reference: File-Specific Guidelines
+## 📖 Reference: Knowledge Base
 
-The `.github/instructions/nginx-c-review.instructions.md` file provides detailed guidelines for C code review:
-
-### Memory Safety
-- Buffer bounds checking
-- Allocation/deallocation matching
-- No use-after-free or double-free
-- Pointer validity
-
-### Concurrency
-- Shared state synchronization
-- Lock ordering
-- Signal safety
-- Memory barriers
-
-### Correctness
-- Error handling
-- Edge cases
-- Invariants
-- Protocol compliance
-
-### Performance
-- Algorithmic complexity
-- Resource efficiency
-- Cache behavior
-- Lock contention
-
-### Tools & Validation
-
-```bash
-# Memory safety
-clang -fsanitize=address,undefined -g
-valgrind --leak-check=full
-
-# Concurrency
-clang -fsanitize=thread
-
-# Static analysis
-clang --analyze
-
-# Code style
-clang-format --style=file
-```
+All review criteria (memory safety, concurrency, correctness, performance, nginx-specific conventions) and the domain knowledge behind them (module ownership, struct layouts, HTTP RFC semantics, directive contracts) live in [.github/docs/](.github/docs/) and [.github/skills/](.github/skills/) — see the Knowledge Base section of [pr-reviewer.agent.md](.github/agents/pr-reviewer.agent.md#knowledge-base) for the full list.
 
 ---
 
@@ -314,9 +209,8 @@ Please validate the new concurrency model against the threat model.
 ## 📞 Support
 
 For questions about the review system:
-- Check `.github/agents/pr-reviewer.agent.md` for detailed review methodology
-- See `.github/instructions/nginx-c-review.instructions.md` for C code guidelines
-- Review `.github/hooks/pr-review.json` for automation configuration
+- Check [pr-reviewer.agent.md](.github/agents/pr-reviewer.agent.md) for detailed review methodology and its knowledge base
+- Review [.github/hooks/pr-review.json](.github/hooks/pr-review.json) for automation configuration
 - Ask `@principal-engineer` for architectural guidance
 
 For setup or troubleshooting:

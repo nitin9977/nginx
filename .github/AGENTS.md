@@ -16,7 +16,10 @@ This directory contains specialized agents configured for the nginx project.
 
 **Knowledge base** (loaded automatically — no codebase traversal needed):
 - `nginx-internals` skill with 5 reference files: module map, struct reference, lifecycle flows, debug playbook, design patterns
+- `http-rfc-standards` skill: RFC 9110–9114 (HTTP semantics, caching, /1.1, /2, /3), RFC 9931 (smuggling defenses), and a compatibility map to the obsoleted 723x/2616/2068/1945 RFCs
+- nginx Coding Style Guide (`.github/docs/coding-style/`) — mandatory formatting/naming/structural rules applied to every design output
 - 14 architecture docs in `.github/docs/` covering all `src/` modules
+- Directive reference (`.github/docs/directives/`) — full nginx.org directive index (core, HTTP, stream, mail) for config-correct designs and debugging
 
 **Specialization:**
 - C/C++ memory management and buffer safety
@@ -39,6 +42,7 @@ This directory contains specialized agents configured for the nginx project.
 @principal-engineer: design a stream module that rate-limits by source IP
 @principal-engineer: Create architecture ramp-up docs for the event loop
 @principal-engineer: Threat model: connection pooling under slowloris attack
+@principal-engineer: is this proxy response handling vulnerable to request smuggling? (checks RFC 9112 §11.2)
 ```
 
 ---
@@ -51,6 +55,12 @@ This directory contains specialized agents configured for the nginx project.
 - Deep-diving into performance impact of code changes
 - Getting a second opinion before merge
 - Triggering automated review on PR (automatic + manual)
+
+**Knowledge base** (loaded automatically — no codebase traversal needed):
+- nginx Coding Style Guide (`.github/docs/coding-style/`) — authoritative source for structural/naming checks (function ordering, type suffixes, directive conventions) that clang-format can't catch
+- `nginx-internals` skill (module map, struct reference, design patterns) — identifies the owning module and its established conventions for the changed file
+- `http-rfc-standards` skill: RFC 9110–9114, 9931 — cited when the diff touches HTTP parsing, framing, caching, or h2/h3 code, especially for request-smuggling risk
+- Directive reference (`.github/docs/directives/`) — verifies documented defaults/context/syntax when a diff adds or changes a config directive
 
 **Specialization:**
 - Buffer overflow and memory safety vulnerabilities
@@ -99,12 +109,6 @@ This directory contains specialized agents configured for the nginx project.
 - Review comments are posted as GitHub PR comments (thread-based)
 
 ## How It Works
-
-**File Instructions** (`.github/instructions/nginx-c-review.instructions.md`):
-- Applies to all `.c` and `.h` files in `src/`, `auto/`, `conf/`
-- Guides reviewers on critical checks (memory, concurrency, correctness)
-- Red flags to watch for
-- Reference tools and checklists
 
 **Hook Configuration** (`.github/hooks/pr-review.json`):
 - Triggers automatic review on PR events
