@@ -2,6 +2,29 @@
 
 This directory contains specialized agents configured for the nginx project.
 
+## Workspace Layout
+
+Agents that cross-reference the `nginx-tests` suite (currently `@pr-reviewer`)
+locate both repos in this order:
+
+1. **Explicit env vars** — always win, use these when your checkouts aren't
+   siblings:
+   ```sh
+   export NGINX_REPO_PATH=~/code/nginx
+   export NGINX_TESTS_REPO_PATH=~/code/nginx-tests
+   ```
+2. **Sibling layout** — no configuration needed:
+   ```
+   ~/code/
+   ├── nginx/            # fork of nginx/nginx
+   └── nginx-tests/      # fork of nginx/nginx-tests
+   ```
+3. **Interactive fallback** — if a cross-repo check is required and neither of
+   the above resolves, the agent will ask once for the missing path.
+
+Single-repo reviews (nginx-only, or nginx-tests-only that doesn't need the C
+sources) don't require the other repo to be locatable.
+
 ## Available Agents
 
 ### `@principal-engineer` – Architecture, Debugging & Feature Design Lead
