@@ -851,6 +851,12 @@ found:
         return;
     }
 
+    if (u->init_peer && u->init_peer(r, u) != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     u->peer.start_time = ngx_current_msec;
 
     if (u->conf->next_upstream_tries
@@ -2293,6 +2299,11 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
         /* buffered request body */
 
         if (!u->request_sent) {
+            if (u->output_ready && u->output_ready(r) != NGX_OK) {
+                u->request_body_blocked = 1;
+                return NGX_AGAIN;
+            }
+
             u->request_sent = 1;
             out = u->request_bufs;
 
@@ -2313,6 +2324,11 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
     }
 
     if (!u->request_sent) {
+        if (u->output_ready && u->output_ready(r) != NGX_OK) {
+            u->request_body_blocked = 1;
+            return NGX_AGAIN;
+        }
+
         u->request_sent = 1;
         out = u->request_bufs;
 
@@ -2363,6 +2379,15 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
         }
 
         if (r->reading_body) {
+
+            /* do not take more of the client request body while held */
+
+            if (u->output_ready && u->output_ready(r) != NGX_OK) {
+                u->request_body_blocked = 1;
+                rc = NGX_AGAIN;
+                break;
+            }
+
             /* read client request body */
 
             rc = ngx_http_read_unbuffered_request_body(r);
@@ -3026,6 +3051,13 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
 {
     int        err;
     socklen_t  len;
+
+    if (c->shared) {
+
+        /* a stream of a connection that is already established */
+
+        return NGX_OK;
+    }
 
 #if (NGX_HAVE_KQUEUE)
 
@@ -4691,6 +4723,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     if (u->peer.tries == 0
+        || u->header_sent
         || ((u->conf->next_upstream & ft_type) != ft_type)
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
@@ -4729,7 +4762,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return;
     }
 
-    if (u->peer.connection) {
+    /* a stream of a multiplexed connection does not own the connection */
+
+    if (u->peer.connection && !u->peer.connection->shared) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
@@ -4748,8 +4783,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
 
         ngx_close_connection(u->peer.connection);
-        u->peer.connection = NULL;
     }
+
+    u->peer.connection = NULL;
 
     ngx_http_upstream_connect(r, u);
 }
@@ -4815,7 +4851,9 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 #endif
     }
 
-    if (u->peer.connection) {
+    /* a stream of a multiplexed connection does not own the connection */
+
+    if (u->peer.connection && !u->peer.connection->shared) {
 
 #if (NGX_HTTP_SSL)
 
